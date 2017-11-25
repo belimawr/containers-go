@@ -32,3 +32,13 @@ The program needs to run as root:
  ```
  # go run main.go run <command> <args>
  ```
+
+Downloading docker images to use as filesystem
+----------------------------------------------
+It's possible to generate a .tar file from docker images:
+
+ ```
+ $ docker export $(docker create <image>) -o output.tar
+ ```
+ 
+ The script ``download_images.sh`` downloads a few images

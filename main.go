@@ -4,14 +4,25 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"syscall"
 )
 
-// docker run <container> command args
-// go run main.go command args
+const (
+	cmdPos  = 1
+	imgPos  = 2
+	execPos = 3
+	argsPos = 4
+)
+
+// go run main.go image run command args
 
 func main() {
-	switch os.Args[1] {
+	if len(os.Args) < 4 {
+		fmt.Println("usage: go run main.go run <image> <command> <args>")
+	}
+
+	switch os.Args[cmdPos] {
 	case "run":
 		run()
 	case "child":
@@ -22,7 +33,7 @@ func main() {
 }
 
 func run() {
-	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
+	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[imgPos:]...)...)
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -35,16 +46,19 @@ func run() {
 }
 
 func child() {
-	fmt.Printf("running %v as pid: %d\n", os.Args[2:], os.Getpid())
+	image := os.Args[imgPos]
+	fmt.Printf("Image: %q\n", image)
+	fmt.Printf("running %v as pid: %d\n", os.Args[execPos:], os.Getpid())
 
-	cmd := exec.Command(os.Args[2], os.Args[3:]...)
+	must(syscall.Chroot(path.Join("images", os.Args[imgPos])))
+	must(os.Chdir("/"))
+	must(syscall.Mount("proc", "proc", "proc", 0, ""))
+
+	cmd := exec.Command(os.Args[execPos], os.Args[argsPos:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
-	must(syscall.Chroot("/mnt/containerfs/fs"))
-	must(os.Chdir("/"))
-	must(syscall.Mount("proc", "proc", "proc", 0, ""))
 	must(cmd.Run())
 }
 
